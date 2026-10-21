@@ -1,131 +1,170 @@
-# Auto Water Tank Level Controller
+# 💧 Dual Water Tank Level Monitoring System
 
-An automated, intelligent water tank filling system using an ultrasonic sensor and a relay-controlled pump. Features dual platform support for both **ESP32** (with embedded Wi-Fi Web Dashboard and REST API) and **Arduino UNO** (standalone with Serial commands).
+![Project Banner](docs/banner.png)
 
----
+Arduino Uno based system that monitors the water level of two tanks using ultrasonic sensors, and displays real-time status through RGB LEDs and a buzzer alert.
 
-## Key Features
-
-- **Ultrasonic Distance Sensing**: Measures the air gap between the sensor and the water surface to calculate real-time water level and fill percentage.
-- **Median Filtering (5 Samples)**: Filters out acoustic noise, false echoes, and surface ripples without external filtering libraries.
-- **Hysteresis Band**: Prevents relay chatter and rapid cycling around cutoff thresholds.
-- **Dry-Run & Timeout Safety Cutoff**: Automatically disables the pump and sounds an alarm if the pump runs continuously past a maximum runtime (e.g. 15 minutes) without the tank reaching FULL.
-- **Smart Alarm**: Beeps buzzer and blinks LED upon fault/dry-run detection; plays a brief 5-second chime on tank full before muting to prevent household disruption.
-- **Dual Firmware Options**:
-  - **ESP32 (`water_tank_controller.ino`)**: Modern dark-mode web dashboard, SoftAP fallback, manual overrides, and REST API endpoints.
-  - **Arduino UNO (`water_tank_controller_uno.ino`)**: Lightweight, robust, non-blocking offline controller with Serial Monitor commands.
-- **Wokwi Simulator Ready**: Run and test the complete circuit directly in your browser or VS Code using the included `diagram.json`.
+> **B.Tech ECE Mini-Project**, TGPCET (RTMNU), Session 2026-27
 
 ---
 
-## Hardware Requirements
-
-- **Microcontroller**: ESP32 Dev Board **OR** Arduino UNO
-- **Ultrasonic Sensor**: HC-SR04 (or waterproof JSN-SR04T)
-- **Relay Module**: 5V 1-channel relay (Active LOW)
-- **Water Pump**: 5V / 12V / AC submersible or external pump connected via relay contacts
-- **Alarm Components**: 5V Active Buzzer, LED + 220Ω resistor
-- **Voltage Divider (For ESP32 only)**: 1kΩ and 2kΩ resistors (to safely step down HC-SR04 5V ECHO to 3.3V)
-- **Power Supply**: 5V DC power supply, breadboard/perfboard, and jumper wires
+## ✨ Features
+- **Independent Monitoring**: Tracks two separate water tanks simultaneously in real time.
+- **Non-Contact Ultrasonic Sensing**: Uses two HC-SR04 sensors to measure distance without submerged probes.
+- **RGB LED Visual Indicators**: Dedicated common-cathode RGB LED for each tank showing Low (🔴 Red), Medium (🟡 Yellow), and High (🟢 Green).
+- **Audible Warning**: Automatic buzzer alert when any tank drops below the critical threshold (< 25%).
+- **Digital Filtering**: Median filtering over multiple samples to eliminate acoustic echo noise and surface ripples.
+- **Low Cost & Expandable**: Simple hardware with minimal components, easily deployed for residential, agricultural, or industrial tanks.
 
 ---
 
-## Pin Mapping
+## 🏗️ Architecture
 
-| Component Pin | ESP32 GPIO | Arduino UNO Pin | Notes |
-|---|---|---|---|
-| **HC-SR04 TRIG** | GPIO 18 | D9 | Output trigger pulse (10µs) |
-| **HC-SR04 ECHO** | GPIO 19 | D10 | **ESP32 Note:** Use voltage divider (5V -> 3.3V) |
-| **Relay IN** | GPIO 23 | D7 | Active LOW (PUMP ON = LOW) |
-| **Buzzer (+)** | GPIO 25 | D6 | Active buzzer |
-| **Status LED (+)** | GPIO 26 | D5 | Connect via 220Ω current-limiting resistor |
-| **VCC & GND** | 5V / GND | 5V / GND | Common ground across all components |
+The system operates across three distinct stages: **Sensing** (2 × HC-SR04 ultrasonic sensors), **Processing** (Arduino Uno microcontroller), and **Indication** (2 × RGB LEDs + 5V buzzer).
 
-> [!WARNING]
-> **ESP32 3.3V Logic Protection**: HC-SR04 ECHO outputs a 5V logic pulse. Connect ECHO to a voltage divider before GPIO 19:
-> `ECHO (5V) ---> [ 1 kΩ ] ---> GPIO 19 ---> [ 2 kΩ ] ---> GND`
+![System Architecture](docs/architecture.svg)
 
----
-
-## ESP32 Wi-Fi & Web Dashboard
-
-When running on ESP32, the controller hosts a local web dashboard accessible from any phone, tablet, or PC on your network.
-
-### Features
-- **Visual Tank Gauge**: Animated water cylinder displaying current fill % and distance in cm.
-- **Live Status & Badges**: Real-time pump state (`RUNNING`, `OFF`, `SAFETY CUTOFF`, `SENSOR ERROR`).
-- **Control Buttons**: Toggle between Automatic mode and Manual Pump ON/OFF.
-- **Safety Reset**: One-click reset for the safety dry-run cutoff.
-- **SoftAP Fallback**: If local Wi-Fi is unavailable, the ESP32 automatically creates a hotspot:
-  - **SSID**: `WaterTank-ESP32`
-  - **Password**: `12345678`
-  - **Default URL**: `http://192.168.4.1`
-
-### REST API Endpoints
-- `GET /api/status` — Returns live JSON status:
-  ```json
-  {
-    "distance": 14.5,
-    "percentage": 77,
-    "pump": false,
-    "safetyTripped": false,
-    "manual": false,
-    "runtimeSec": 0,
-    "statusText": "NORMAL (IDLE)"
-  }
-  ```
-- `GET /api/pump?state=on|off|auto` — Switch pump mode or trigger manual override.
-- `GET /api/reset` — Reset safety dry-run cutoff and clear alarms.
-
----
-
-## Arduino UNO Serial Commands
-
-Connect the Arduino UNO via USB at **9600 baud** to monitor readings and send single-letter control commands via the Serial Monitor:
-
-- `r` or `R`: **Reset** the safety cutoff after an error.
-- `s` or `S`: **Status report** (pump state, runtime, override status).
-- `p` or `P`: **Manual override toggle** (force pump ON or OFF).
-
----
-
-## Calibration Guide
-
-Every water tank has unique dimensions. Adjust these constants in the `.ino` files:
-
-```cpp
-const float FULL_DISTANCE = 10.0;   // Distance (cm) from sensor to water when tank is FULL
-const float LOW_DISTANCE  = 30.0;   // Distance (cm) from sensor to water when tank is LOW
-const unsigned long MAX_PUMP_RUNTIME_MS = 15UL * 60UL * 1000UL; // Safety cutoff time
+```mermaid
+flowchart LR
+    T1[Tank 1] --> S1[HC-SR04 #1]
+    T2[Tank 2] --> S2[HC-SR04 #2]
+    S1 -- D2/D3 --> A[Arduino Uno]
+    S2 -- D4/D5 --> A
+    A -- D8-D10 --> L1[RGB LED 1]
+    A -- D11-D13 --> L2[RGB LED 2]
+    A -- A0 --> B[Buzzer]
 ```
 
-1. **Full Distance (`FULL_DISTANCE`)**: Measure the air gap between the sensor face and the maximum desired water level.
-2. **Low Distance (`LOW_DISTANCE`)**: Measure the air gap when the water level is low enough that the pump should start.
-3. **Safety Timeout (`MAX_PUMP_RUNTIME_MS`)**: Time a standard fill cycle and set this value 20-30% higher so it only triggers on pipe leaks, empty supply, or pump failure.
+### Program Flow
+```mermaid
+flowchart TD
+    A([Start]) --> B[Trigger HC-SR04 Sensor]
+    B --> C[Read Echo Duration]
+    C --> D["Calculate distance: time × 0.0343 / 2"]
+    D --> E["Calculate level: tank height − distance"]
+    E --> F{Check Thresholds}
+    F -->|Critical < 25%| G[Set RGB LED: Red]
+    F -->|Medium 25-75%| H[Set RGB LED: Yellow]
+    F -->|Full > 75%| I[Set RGB LED: Green]
+    G --> J[Buzzer ON]
+    H --> K[Buzzer OFF]
+    I --> K
+    J --> L[Repeat for Next Tank]
+    K --> L
+    L --> B
+```
 
 ---
 
-## Online Simulation (Wokwi)
+## 🧰 Components
 
-You can simulate the circuit without physical hardware:
-
-1. Visit [Wokwi.com](https://wokwi.com) or install the Wokwi VS Code Extension.
-2. Open this repository folder.
-3. Start simulation via `diagram.json` and `wokwi.toml`.
-4. Click on the HC-SR04 sensor in the simulation preview to drag the distance slider and watch the relay, LED, and buzzer respond in real time.
-
----
-
-## Repository Files
-
-- [water_tank_controller.ino](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/water_tank_controller.ino) — ESP32 firmware with embedded Wi-Fi Web Dashboard and REST API.
-- [water_tank_controller_uno.ino](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/water_tank_controller_uno.ino) — Arduino UNO non-blocking firmware with Serial commands.
-- [diagram.json](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/diagram.json) — Wokwi simulation circuit layout.
-- [wokwi.toml](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/wokwi.toml) — Wokwi project configuration.
-- [README.md](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/README.md) — Documentation and guide.
+| Component | Qty | Specification / Function |
+|---|---|---|
+| **Arduino Uno** | 1 | ATmega328P Microcontroller Board |
+| **HC-SR04 Ultrasonic Sensor** | 2 | 2cm – 400cm Non-Contact Distance Sensor |
+| **RGB LED** | 2 | Common-Cathode 5mm RGB LEDs |
+| **Resistors** | 6 | 220 Ω Current-Limiting Resistors for RGB LEDs |
+| **5V Active Buzzer** | 1 | Audible Warning Alarm |
+| **Breadboard & Jumper Wires** | – | Prototype Connections & Common 5V/GND Rails |
 
 ---
 
-## License
+## 🔌 Pin Connections
 
-MIT
+![Wiring Diagram](docs/circuit.svg)
+
+| Device | Signal | Arduino Uno Pin | Description |
+|---|---|---|---|
+| **Tank 1 Sensor** | TRIG | **D2** | Trigger pulse output |
+| **Tank 1 Sensor** | ECHO | **D3** | Echo return pulse input |
+| **Tank 2 Sensor** | TRIG | **D4** | Trigger pulse output |
+| **Tank 2 Sensor** | ECHO | **D5** | Echo return pulse input |
+| **Tank 1 RGB LED** | R / G / B | **D8, D9, D10** | Red, Green, Blue cathodes via 220Ω |
+| **Tank 2 RGB LED** | R / G / B | **D11, D12, D13** | Red, Green, Blue cathodes via 220Ω |
+| **Buzzer** | Signal (+) | **A0** | 5V Active Buzzer trigger |
+| **Power Rails** | VCC / GND | **5V / GND** | Common power across sensors and indicators |
+
+---
+
+## ⚙️ How It Works
+
+1. **Ultrasonic Ping**: The HC-SR04 sends an 8-cycle ultrasonic burst (40 kHz) and measures the duration until the reflected echo is received.
+2. **Distance Conversion**: Arduino calculates distance to water surface:
+   $$\text{Distance (cm)} = \frac{\text{Echo Time } (\mu\text{s}) \times 0.0343}{2}$$
+3. **Level Calculation**:
+   $$\text{Water Depth} = \text{Tank Height} - \text{Distance}$$
+   $$\text{Fill Percentage (\%)} = \left(\frac{\text{Water Depth}}{\text{Effective Height}}\right) \times 100$$
+4. **Visual & Audio Indication**:
+
+| Level Status | Water Capacity | RGB LED Color | Buzzer Alarm |
+|---|---|---|---|
+| **Critical / Low** | $< 25\%$ | 🔴 **Red** | **ON** (Beeping Warning) |
+| **Normal / Moderate** | $25\% - 75\%$ | 🟡 **Yellow** | **OFF** |
+| **Full / High** | $> 75\%$ | 🟢 **Green** | **OFF** |
+| **Sensor Error** | Disconnected / Timeout | 🟣 **Magenta** | **OFF** |
+
+---
+
+## 🚀 Setup & Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/tejasbargat16-ux/water-tank-auto-controller.git
+   cd water-tank-auto-controller
+   ```
+2. **Open the sketch** in [Arduino IDE](https://www.arduino.cc/en/software):
+   - Choose [`dual_water_tank_monitor.ino`](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/dual_water_tank_monitor.ino) for the 2-Tank RGB Monitoring system.
+   - Choose [`water_tank_controller_uno.ino`](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/water_tank_controller_uno.ino) or [`water_tank_controller.ino`](file:///c:/Users/tejas/tejas_bargat/water-tank-auto-controller/water_tank_controller.ino) for the Auto-Pump Relay versions.
+3. **Calibrate your tank dimensions**:
+   ```cpp
+   const float TANK_HEIGHT_CM = 40.0;   // Height of your physical tank
+   const float MIN_DISTANCE   = 5.0;    // Minimum clearance at full capacity
+   ```
+4. **Connect hardware** per the [Pin Connections table](#-pin-connections).
+5. **Upload**: Select **Arduino Uno**, choose the correct COM port, and click **Upload**.
+6. **Open Serial Monitor** (`9600 baud`) to inspect live distance and fill percentages.
+
+---
+
+## 📸 Demo & Prototype
+
+![System Overview](docs/system_overview.png)
+
+---
+
+## 📁 Repository Structure
+
+```
+.
+├── README.md                          # Project documentation & wiring diagrams
+├── dual_water_tank_monitor.ino        # Dual-Tank level monitoring (2x HC-SR04, 2x RGB, Buzzer)
+├── water_tank_controller_uno.ino      # Single-tank auto-fill pump controller (Arduino UNO)
+├── water_tank_controller.ino          # Single-tank auto-fill pump controller with Web UI (ESP32)
+├── diagram.json                       # Wokwi simulation circuit configuration
+├── wokwi.toml                         # Wokwi simulator project setup
+└── docs/
+    ├── architecture.svg               # Block architecture diagram
+    ├── circuit.svg                    # Complete wiring schematic
+    ├── banner.png                     # Project banner graphic
+    └── system_overview.png            # Hardware system layout / prototype overview
+```
+
+---
+
+## 👥 Project Team
+
+- **Yashvant Rathod**
+- **Vijay Banarase**
+- **Tejas Bargat**
+- **Pratik Mahajan**
+- **Sahebrao Salgar**
+
+**Project Guide**: Mayuri Harde  
+**Department**: Electronics & Communication Engineering (ECE)  
+**Institution**: TGPCET (RTMNU), Session 2026-27
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
