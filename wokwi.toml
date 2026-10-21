@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = "water_tank_controller_uno.ino"
+elf = "water_tank_controller_uno.ino"

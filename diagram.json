@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "author": "Tejas Bargat",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 120, "left": 60, "attrs": {} },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic",
+      "top": -80,
+      "left": 160,
+      "attrs": { "distance": "35" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay",
+      "top": 100,
+      "left": 420,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": -60,
+      "left": 360,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led",
+      "top": 20,
+      "left": 370,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 25,
+      "left": 320,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "uno:5V", "ultrasonic:VCC", "red", [ "v0" ] ],
+    [ "uno:GND.1", "ultrasonic:GND", "black", [ "v0" ] ],
+    [ "uno:9", "ultrasonic:TRIG", "blue", [ "v0" ] ],
+    [ "uno:10", "ultrasonic:ECHO", "green", [ "v0" ] ],
+
+    [ "uno:5V", "relay:VCC", "red", [ "v0" ] ],
+    [ "uno:GND.2", "relay:GND", "black", [ "v0" ] ],
+    [ "uno:7", "relay:IN", "orange", [ "v0" ] ],
+
+    [ "uno:6", "buzzer:2", "purple", [ "v0" ] ],
+    [ "uno:GND.3", "buzzer:1", "black", [ "v0" ] ],
+
+    [ "uno:5", "r1:1", "green", [ "v0" ] ],
+    [ "r1:2", "led:A", "green", [ "v0" ] ],
+    [ "uno:GND.3", "led:C", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
